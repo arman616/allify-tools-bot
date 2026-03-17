@@ -1,13 +1,33 @@
-from flask import Flask, request, jsonify
+import telebot
+import yt_dlp
 
-app = Flask(__name__)
+BOT_TOKEN = "YOUR_BOT_TOKEN"
+bot = telebot.TeleBot(BOT_TOKEN)
 
-@app.route("/")
-def home():
-    return "API running"
+@bot.message_handler(commands=['start'])
+def start(message):
+    bot.reply_to(message, "⚡ Allify Tools Bot\n\nSend YouTube link to download 📥")
 
-@app.route("/download", methods=["POST"])
-def download():
-    return jsonify({"status": "working"})
-    
-app.run(host="0.0.0.0", port=10000)
+@bot.message_handler(func=lambda m: True)
+def download(message):
+    url = message.text
+
+    if "youtube" in url:
+        bot.reply_to(message, "⏳ Downloading...")
+
+        ydl_opts = {
+            'format': 'best',
+            'outtmpl': 'video.mp4'
+        }
+
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([url])
+
+            video = open("video.mp4", "rb")
+            bot.send_video(message.chat.id, video)
+
+        except:
+            bot.reply_to(message, "❌ Error downloading video")
+
+bot.polling()
