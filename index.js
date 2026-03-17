@@ -1,12 +1,12 @@
 const TelegramBot = require('node-telegram-bot-api');
-const ytdl = require('ytdl-core');
+const axios = require('axios');
 
 const token = process.env.BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 
-// START MENU
+// START MENU WITH BUTTONS
 bot.onText(/\/start/, (msg) => {
-  bot.sendMessage(msg.chat.id, "⚡ Allify Tools Bot\n\nChoose option:", {
+  bot.sendMessage(msg.chat.id, "⚡ Allify Tools Bot\n\nChoose an option:", {
     reply_markup: {
       inline_keyboard: [
         [{ text: "📥 Download Tools", callback_data: "download" }],
@@ -16,38 +16,46 @@ bot.onText(/\/start/, (msg) => {
   });
 });
 
-// BUTTON HANDLER
+// BUTTON CLICK HANDLER
 bot.on('callback_query', (query) => {
-  const msg = query.message;
+  const chatId = query.message.chat.id;
 
   if (query.data === "download") {
-    bot.sendMessage(msg.chat.id, "📥 Send YouTube link");
+    bot.sendMessage(chatId, "📥 Send YouTube link");
   }
 
   if (query.data === "ai") {
-    bot.sendMessage(msg.chat.id, "🤖 AI coming soon...");
+    bot.sendMessage(chatId, "🤖 AI coming soon...");
   }
 
   bot.answerCallbackQuery(query.id);
 });
 
-// DOWNLOAD LOGIC
+// MESSAGE HANDLER (DOWNLOAD LOGIC)
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
 
-  if (ytdl.validateURL(text)) {
-    bot.sendMessage(chatId, "⏳ Downloading...");
+  // Ignore /start command
+  if (text === "/start") return;
+
+  // Check if message is YouTube link
+  if (text && text.includes("youtube")) {
+    bot.sendMessage(chatId, "⏳ Processing your download...");
 
     try {
-      const info = await ytdl.getInfo(text);
-      const title = info.videoDetails.title;
+      const res = await axios.post("https://allify-api.onrender.com/download", {
+        url: text
+      });
 
-      bot.sendMessage(chatId, `📥 Sending: ${title}`);
+      if (res.data.status === "success") {
+        bot.sendMessage(chatId, "✅ Video downloaded successfully (server side)");
+      } else {
+        bot.sendMessage(chatId, "❌ Download failed");
+      }
 
-      bot.sendVideo(chatId, ytdl(text, { quality: '18' }));
-    } catch (err) {
-      bot.sendMessage(chatId, "❌ Error downloading video");
+    } catch (error) {
+      bot.sendMessage(chatId, "⚠️ Error connecting to server");
     }
   }
 });
