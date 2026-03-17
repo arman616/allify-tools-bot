@@ -1,41 +1,53 @@
 const TelegramBot = require('node-telegram-bot-api');
+const ytdl = require('ytdl-core');
 
 const token = process.env.BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 
-// START COMMAND WITH BUTTONS
+// START MENU
 bot.onText(/\/start/, (msg) => {
-  bot.sendMessage(msg.chat.id, "⚡ Welcome to Allify Tools Bot\n\nChoose an option:", {
+  bot.sendMessage(msg.chat.id, "⚡ Allify Tools Bot\n\nChoose option:", {
     reply_markup: {
       inline_keyboard: [
         [{ text: "📥 Download Tools", callback_data: "download" }],
-        [{ text: "📂 File Converter", callback_data: "converter" }],
-        [{ text: "🖼️ Image Tools", callback_data: "image" }],
         [{ text: "🤖 AI Tools", callback_data: "ai" }]
       ]
     }
   });
 });
 
-// BUTTON CLICK HANDLER
+// BUTTON HANDLER
 bot.on('callback_query', (query) => {
   const msg = query.message;
 
   if (query.data === "download") {
-    bot.sendMessage(msg.chat.id, "📥 Send video link to download");
-  }
-
-  if (query.data === "converter") {
-    bot.sendMessage(msg.chat.id, "📂 Send file to convert");
-  }
-
-  if (query.data === "image") {
-    bot.sendMessage(msg.chat.id, "🖼️ Send image for editing");
+    bot.sendMessage(msg.chat.id, "📥 Send YouTube link");
   }
 
   if (query.data === "ai") {
-    bot.sendMessage(msg.chat.id, "🤖 Ask anything...");
+    bot.sendMessage(msg.chat.id, "🤖 AI coming soon...");
   }
 
   bot.answerCallbackQuery(query.id);
+});
+
+// DOWNLOAD LOGIC
+bot.on('message', async (msg) => {
+  const chatId = msg.chat.id;
+  const text = msg.text;
+
+  if (ytdl.validateURL(text)) {
+    bot.sendMessage(chatId, "⏳ Downloading...");
+
+    try {
+      const info = await ytdl.getInfo(text);
+      const title = info.videoDetails.title;
+
+      bot.sendMessage(chatId, `📥 Sending: ${title}`);
+
+      bot.sendVideo(chatId, ytdl(text, { quality: '18' }));
+    } catch (err) {
+      bot.sendMessage(chatId, "❌ Error downloading video");
+    }
+  }
 });
